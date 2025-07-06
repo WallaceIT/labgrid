@@ -339,6 +339,95 @@ exports["NetworkInterface"] = NetworkInterfaceExport
 
 
 @attr.s(eq=False)
+class CANInterfaceExport(ResourceExport):
+    """ResourceExport for a CAN interface"""
+
+    def __attrs_post_init__(self):
+        super().__attrs_post_init__()
+        from ..resource.caninterface import CANInterface
+
+        self.local = CANInterface(target=None, name=None, **self.local_params)
+        self.data["cls"] = "NetworkCANInterface"
+        self.child = None
+        self.port = None
+        self.socketcand_bin = shutil.which("socketcand")
+        if self.socketcand_bin is None:
+            if os.path.isfile("/usr/sbin/socketcand"):
+                self.socketcand_bin = "/usr/sbin/socketcand"
+
+            if self.socketcand_bin is None:
+                self.socketcand_bin = "/usr/bin/socketcand"
+                warnings.warn(f"socketcand binary not found, falling back to {self.socketcand_bin}")
+
+    def __del__(self):
+        if self.child is not None:
+            self.stop()
+
+    def _get_start_params(self):
+        return {
+            "ifname": self.local.ifname,
+        }
+
+    def _get_params(self):
+        """Helper function to return parameters"""
+        params = {
+            "host": self.host,
+            "port": self.port,
+            "ifname": self.local.ifname,
+            "bitrate": self.local.bitrate,
+            "samplepoint": self.local.samplepoint,
+            "fd": self.local.fd,
+            "databitrate": self.local.databitrate,
+        }
+
+        return params
+
+    def _start(self, start_params):
+        """Start ``socketcand`` subprocess"""
+        assert self.local.avail
+        assert self.child is None
+        self.port = get_free_port()
+
+        cmd = [
+            self.socketcand_bin,
+            "-i",
+            self.local.ifname,
+            "-p",
+            str(self.port),
+            "-n", # no beacon
+        ]
+        self.logger.info("Starting socketcand with: %s", " ".join(cmd))
+        self.child = subprocess.Popen(cmd)
+        try:
+            self.child.wait(timeout=0.5)
+            raise ExporterError(f"socketcand for {start_params['ifname']} exited immediately")
+        except subprocess.TimeoutExpired:
+            # good, socketcand didn't exit immediately
+            pass
+        self.logger.info("started socketcand for %s on port %d", start_params["ifname"], self.port)
+
+    def _stop(self, start_params):
+        """Stop ``socketcand`` subprocess"""
+        assert self.child
+        child = self.child
+        self.child = None
+        port = self.port
+        self.port = None
+        child.terminate()
+        try:
+            child.wait(1.0)
+        except subprocess.TimeoutExpired:
+            self.logger.warning("socketcand for %s still running after SIGTERM", start_params["ifname"])
+            log_subprocess_kernel_stack(self.logger, child)
+            child.kill()
+            child.wait(1.0)
+        self.logger.info("stopped socketcand for %s on port %d", start_params["ifname"], port)
+
+
+exports["CANInterface"] = CANInterfaceExport
+
+
+@attr.s(eq=False)
 class USBGenericExport(ResourceExport):
     """ResourceExport for USB devices accessed directly from userspace"""
 

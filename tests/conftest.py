@@ -7,8 +7,9 @@ import pytest
 import pexpect
 
 from labgrid import Target
-from labgrid.driver import SerialDriver
-from labgrid.resource import RawSerialPort, NetworkSerialPort
+from labgrid.driver import SerialDriver, CANDriver
+from labgrid.resource import RawSerialPort, NetworkSerialPort, CANInterface
+from labgrid.resource.remote import NetworkCANInterface
 from labgrid.driver.fake import FakeConsoleDriver
 
 psutil = pytest.importorskip("psutil")
@@ -194,6 +195,10 @@ def serial_driver_no_name(target, serial_port, mocker):
     s = SerialDriver(target, None)
     target.activate(s)
     return s
+
+@pytest.fixture(scope='function')
+def can_interface(target):
+    return CANInterface(target, 'can', ifname='can0', bitrate=250000)
 
 @pytest.fixture(scope='function')
 def coordinator(tmpdir):

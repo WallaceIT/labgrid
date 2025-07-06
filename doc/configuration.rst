@@ -1347,6 +1347,39 @@ Arguments:
 Used by:
   - none
 
+CANInterface
+~~~~~~~~~~~~
+A :any:`CANInterface` resource describes a Controller Area Network (CAN)
+interface.
+
+.. code-block:: yaml
+
+   CANInterface:
+     type: "socketcan"
+     ifname: "can0"
+     bitrate: 250000
+     samplepoint: 0.75
+     fd: true
+     databitrate: 10000000
+
+Arguments:
+  - type (str): type of the CAN interface, shall be one of the types supported
+  by the `python-can <https://python-can.readthedocs.io/en/stable/>`_ library.
+  Defaults to 'socketcan'.
+  - ifname (str): name of the CAN interface
+  - bitrate (int): CAN bitrate, defaults to 250000
+  - samplepoint (float): CAN sample point (0.001-1.000), defaults to 0.750
+  - fd (bool): enable CAN-FD, defaults to false
+  - databitrate (int): CAN-FD data bitrate, defaults to 10000000
+
+Used by:
+  - `CANDriver`_
+
+NetworkCANInterface
+~~~~~~~~~~~~~~~
+A :any:`NetworkCANInterface` resource describes a `CANInterface`_ resource
+available on a remote computer.
+
 Providers
 ~~~~~~~~~
 Providers describe directories that are accessible by the target over a
@@ -3384,6 +3417,31 @@ Binds to:
     - `NetworkInterface`_
     - `RemoteNetworkInterface`_
     - `USBNetworkInterface`_
+
+Implements:
+  - None yet
+
+Arguments:
+  - None
+
+CANDriver
+~~~~~~~~~
+A :any:`CANDriver` connects to a CAN interface. It requires one of the CAN
+interface resources.
+
+The driver is implemented using the
+`python-can <https://python-can.readthedocs.io/en/stable/>`_
+Python library and exposes both a simple interface (with synchronous `send()`
+and `receive()` APIs) and the "raw" python-can bus (through `get_bus()`).
+
+Binds to:
+  port:
+    - `CANInterface`_
+    - `NetworkCANInterface`_
+
+.. code-block:: yaml
+
+   CANDriver: {}
 
 Implements:
   - None yet

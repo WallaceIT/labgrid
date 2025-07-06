@@ -414,3 +414,24 @@ class RemoteNFSProvider(NetworkResource):
 @attr.s(eq=False)
 class RemoteHTTPProvider(RemoteBaseProvider):
     pass
+
+
+@target_factory.reg_resource
+@attr.s(eq=False)
+class NetworkCANInterface(NetworkResource):
+    """A NetworkCANInterface is a remotely accessible CAN interface.
+
+    Args:
+        port (str): socket port to connect to
+        ifname (str): name of the CAN interface
+        bitrate (int): CAN bitrate (1-1000000), defaults to 250000
+        samplepoint (float): CAN sample point (0.001-1.000), defaults to 0.750
+        fd (bool): enable CAN-FD, defaults to False
+        databitrate (int): CAN-FD data bitrate (1-25000000), defaults to 10000000
+    """
+    port = attr.ib(validator=attr.validators.optional(attr.validators.instance_of(int)))
+    ifname = attr.ib(default=None, validator=attr.validators.instance_of(str))
+    bitrate = attr.ib(default=250000, validator=attr.validators.instance_of(int))
+    samplepoint = attr.ib(default=0.750, validator=attr.validators.instance_of(float))
+    fd = attr.ib(default=False, validator=attr.validators.instance_of(bool))
+    databitrate = attr.ib(default=1000000, validator=attr.validators.instance_of(int))

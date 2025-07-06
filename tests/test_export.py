@@ -1,8 +1,8 @@
 import pytest
 
 from labgrid.resource import Resource, NetworkSerialPort, TFTPProvider
-from labgrid.resource.remote import RemoteNetworkInterface, RemoteTFTPProvider
-from labgrid.driver import Driver, SerialDriver, NetworkInterfaceDriver, TFTPProviderDriver
+from labgrid.resource.remote import RemoteNetworkInterface, RemoteTFTPProvider, NetworkCANInterface
+from labgrid.driver import Driver, SerialDriver, NetworkInterfaceDriver, TFTPProviderDriver, CANDriver
 from labgrid.strategy import Strategy
 from labgrid.binding import StateError
 
@@ -85,6 +85,19 @@ def test_export_remote_network_interface(target):
     assert exported == {
         'LG__NETIF_HOST': 'testhost',
         'LG__NETIF_IFNAME': 'wlan0'
+    }
+
+
+def test_export_network_can_interface(target):
+    NetworkCANInterface(target, None, host='testhost', port=12345, ifname='can0', bitrate=500000)
+    CANDriver(target, "can")
+
+    exported = target.export()
+    assert exported == {
+        'LG__CAN_HOST': 'testhost',
+        'LG__CAN_PORT': '12345',
+        'LG__CAN_IFNAME': 'can0',
+        'LG__CAN_BITRATE': '500000',
     }
 
 

@@ -1,0 +1,59 @@
+#!/usr/bin/python3 
+
+# This is intended to be used via sudo. For example, add via visudo:
+# %developers ALL = NOPASSWD: /usr/local/sbin/labgrid-can-setup
+
+import argparse
+import os
+import sys
+import subprocess
+
+
+def main(ifname, command, bitrate, samplepoint, fd, databitrate):
+    if not ifname:
+        raise ValueError("Empty interface name.")
+    if any((c == "/" or c.isspace()) for c in ifname):
+        raise ValueError(f"Interface name '{ifname}' contains invalid characters.")
+    if len(ifname) > 16:
+        raise ValueError(f"Interface name '{ifname}' is too long.")
+
+    if command == "down":
+        p = subprocess.run(["ip", "link", "set", "down", "dev", ifname])
+        if p.returncode != 0:
+            raise RuntimeError(f"Cannot bring interface {ifname} down. ip exited with: {p.returncode}")
+    elif command == "up":
+        p = subprocess.run(["ip", "link", "set", "up", "dev", ifname])
+        if p.returncode != 0:
+            raise RuntimeError(f"Cannot bring interface {ifname} up. ip exited with: {p.returncode}")
+    elif command == "conf":
+        # Skip configuration for virtual interfaces (e.g.: vcan)
+        if "virtual" not in os.readlink(f"/sys/class/net/{ifname}"):
+            cmd = ["ip", "link", "set", ifname, "type", "can", "bitrate", str(bitrate), "sample-point", str(samplepoint)]
+            if fd:
+                cmd = cmd + ["fd", "on", "dbitrate", str(databitrate)]
+            p = subprocess.run(cmd)
+            if p.returncode != 0:
+                raise RuntimeError(f"Cannot configure the CAN interface {ifname}. ip exited with: {p.returncode}")
+    else:
+        raise ValueError(f"Invalid command {cmd}.")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--debug', action='store_true', default=False, help="enable debug mode")
+    parser.add_argument('interface', type=str, help='interface name')
+    parser.add_argument('command', type=str, choices=["up", "down", "conf"], help="command, one of {%(choices)s}")
+    parser.add_argument('-b', '--bitrate', type=int, default=250000, help='CAN bitrate')
+    parser.add_argument('-s', '--sample-point', type=float, default=0.750, help='CAN sample point')
+    parser.add_argument('-f', '--fd', action='store_true', help='Enable CAN-FD support')
+    parser.add_argument('-x', '--data-bitrate', type=int, default=10000000, help='CAN-FD data bitrate')
+    args = parser.parse_args()
+    try:
+        main(args.interface, args.command, args.bitrate, args.sample_point, args.fd, args.data_bitrate)
+    except Exception as e:  # pylint: disable=broad-except
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
